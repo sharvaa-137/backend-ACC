@@ -15,6 +15,14 @@ const transactionSchema = new mongoose.Schema({
         required: [true, 'Огноо оруулна уу'],
         index: true
     },
+    bankName: {
+        type: String,
+        trim: true
+    },
+    bankAccount: {
+        type: String,
+        trim: true
+    },
     contactInfo: {
         type: String,
         trim: true

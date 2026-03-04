@@ -11,15 +11,10 @@ const companySchema = new mongoose.Schema({
         trim: true,
         index: true
     },
-    bankName: {
-        type: String,
-        trim: true
-    },
-    bankAccount: {
-        type: String,
-        trim: true,
-        index: true
-    },
+    banks: [{
+        bankName: { type: String, trim: true },
+        bankAccount: { type: String, trim: true }
+    }],
     contactPerson: {
         type: String,
         trim: true
@@ -33,6 +28,6 @@ const companySchema = new mongoose.Schema({
 });
 
 // Text index for search
-companySchema.index({ name: 'text', registrationNumber: 'text', bankAccount: 'text' });
+companySchema.index({ name: 'text', registrationNumber: 'text' });
 
 module.exports = mongoose.model('Company', companySchema);

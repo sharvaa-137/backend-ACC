@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
                 $or: [
                     { name: { $regex: searchTerm, $options: 'i' } },
                     { registrationNumber: { $regex: searchTerm, $options: 'i' } },
-                    { bankAccount: { $regex: searchTerm, $options: 'i' } },
+                    { 'banks.bankAccount': { $regex: searchTerm, $options: 'i' } },
                     { contactPerson: { $regex: searchTerm, $options: 'i' } }
                 ]
             };
@@ -54,7 +54,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const company = await Company.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
+            returnDocument: 'after',
             runValidators: true
         });
         if (!company) {
