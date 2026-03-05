@@ -30,12 +30,18 @@ const transactionSchema = new mongoose.Schema({
     notes: {
         type: String,
         trim: true
+    },
+    paymentStatus: {
+        type: String,
+        enum: ['paid', 'unpaid'],
+        default: 'unpaid'
     }
 }, {
     timestamps: true
 });
 
-// Index for date-based queries
+// Index for date-based queries and payment status filtering
 transactionSchema.index({ transactionDate: 1, companyId: 1 });
+transactionSchema.index({ paymentStatus: 1, transactionDate: 1 });
 
 module.exports = mongoose.model('Transaction', transactionSchema);

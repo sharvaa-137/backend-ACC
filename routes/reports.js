@@ -41,39 +41,68 @@ router.get('/', async (req, res) => {
                 return res.status(400).json({ message: 'type нь day, month, quarter, year байх ёстой' });
         }
 
-        // Get transactions in date range
+        // Get transactions in date range with lean for performance
         const transactions = await Transaction.find({
             transactionDate: { $gte: startDate, $lte: endDate }
         })
             .populate('companyId')
-            .sort({ transactionDate: 1, createdAt: 1 });
+            .sort({ transactionDate: 1, createdAt: 1 })
+            .lean();
 
         // Calculate summary
         const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
         const transactionCount = transactions.length;
 
+        // Payment status aggregation
+        let paidTotal = 0, unpaidTotal = 0, paidCount = 0, unpaidCount = 0;
+
         // Group by date for detailed breakdown
         const groupedByDate = {};
-        transactions.forEach(t => {
+        // Group by company for summary (with payment status breakdown)
+        const companyMap = {};
+
+        for (const t of transactions) {
+            // Payment status totals
+            if (t.paymentStatus === 'paid') {
+                paidTotal += t.amount;
+                paidCount++;
+            } else {
+                unpaidTotal += t.amount;
+                unpaidCount++;
+            }
+
+            // Group by date
             const dateKey = t.transactionDate.toISOString().split('T')[0];
             if (!groupedByDate[dateKey]) {
                 groupedByDate[dateKey] = { transactions: [], total: 0 };
             }
             groupedByDate[dateKey].transactions.push(t);
             groupedByDate[dateKey].total += t.amount;
-        });
 
-        // Group by company for summary
-        const groupedByCompany = {};
-        transactions.forEach(t => {
+            // Group by company with payment status breakdown
             const companyName = t.companyId ? t.companyId.name : 'Тодорхойгүй';
             const companyId = t.companyId ? t.companyId._id.toString() : 'unknown';
-            if (!groupedByCompany[companyId]) {
-                groupedByCompany[companyId] = { name: companyName, total: 0, count: 0 };
+            if (!companyMap[companyId]) {
+                companyMap[companyId] = {
+                    name: companyName,
+                    total: 0,
+                    count: 0,
+                    paidTotal: 0,
+                    unpaidTotal: 0,
+                    paidCount: 0,
+                    unpaidCount: 0
+                };
             }
-            groupedByCompany[companyId].total += t.amount;
-            groupedByCompany[companyId].count += 1;
-        });
+            companyMap[companyId].total += t.amount;
+            companyMap[companyId].count += 1;
+            if (t.paymentStatus === 'paid') {
+                companyMap[companyId].paidTotal += t.amount;
+                companyMap[companyId].paidCount += 1;
+            } else {
+                companyMap[companyId].unpaidTotal += t.amount;
+                companyMap[companyId].unpaidCount += 1;
+            }
+        }
 
         res.json({
             type,
@@ -81,9 +110,13 @@ router.get('/', async (req, res) => {
             endDate,
             totalAmount,
             transactionCount,
+            paidTotal,
+            unpaidTotal,
+            paidCount,
+            unpaidCount,
             transactions,
             groupedByDate,
-            groupedByCompany: Object.values(groupedByCompany)
+            groupedByCompany: Object.values(companyMap)
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

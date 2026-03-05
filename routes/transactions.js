@@ -2,18 +2,26 @@ const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
 
-// GET /api/transactions - List transactions with date filter
+// GET /api/transactions - List transactions with date/month filter
 router.get('/', async (req, res) => {
     try {
-        const { date, from, to } = req.query;
+        const { date, from, to, year, month } = req.query;
         let query = {};
 
         if (date) {
+            // Single day filter
             const dayStart = new Date(date);
             dayStart.setHours(0, 0, 0, 0);
             const dayEnd = new Date(date);
             dayEnd.setHours(23, 59, 59, 999);
             query.transactionDate = { $gte: dayStart, $lte: dayEnd };
+        } else if (year && month) {
+            // Month filter — fetch all transactions for a given month
+            const y = parseInt(year);
+            const m = parseInt(month) - 1;
+            const monthStart = new Date(y, m, 1);
+            const monthEnd = new Date(y, m + 1, 0, 23, 59, 59, 999);
+            query.transactionDate = { $gte: monthStart, $lte: monthEnd };
         } else if (from && to) {
             const fromDate = new Date(from);
             fromDate.setHours(0, 0, 0, 0);
@@ -24,7 +32,8 @@ router.get('/', async (req, res) => {
 
         const transactions = await Transaction.find(query)
             .populate('companyId')
-            .sort({ transactionDate: -1, createdAt: -1 });
+            .sort({ transactionDate: -1, createdAt: -1 })
+            .lean();
 
         res.json(transactions);
     } catch (error) {
